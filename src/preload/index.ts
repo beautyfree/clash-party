@@ -101,6 +101,8 @@ const validInvokeChannels = [
   'quitWithoutCore',
   // System
   'triggerSysProxy',
+  'getKillSwitchStatus',
+  'setKillSwitch',
   'checkTunPermissions',
   'grantTunPermissions',
   'manualGrantCorePermition',
