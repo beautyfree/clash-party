@@ -23,10 +23,27 @@ describe('Kill Switch endpoint collection', () => {
 
   it('refuses profiles whose outbound endpoints cannot be enumerated', async () => {
     await expect(getKillSwitchEndpoints(profile([], { remote: {} }))).rejects.toThrow(
-      'proxy providers'
+      'inline proxy providers'
     )
     await expect(getKillSwitchEndpoints(profile([{ server: '203.0.113.10' }]))).rejects.toThrow(
       'fixed host and port'
     )
+  })
+
+  it('includes nodes from inline proxy providers', async () => {
+    const endpoints = await getKillSwitchEndpoints(
+      profile([{ server: '203.0.113.10', port: 443 }], {
+        inline: {
+          type: 'inline',
+          payload: [
+            { server: '203.0.113.10', port: 443 },
+            { server: '203.0.113.11', port: 8443 }
+          ]
+        }
+      })
+    )
+    expect(endpoints).toHaveLength(4)
+    expect(endpoints).toContainEqual({ ip: '203.0.113.11', port: 8443, protocol: 'tcp' })
+    expect(endpoints).toContainEqual({ ip: '203.0.113.11', port: 8443, protocol: 'udp' })
   })
 })

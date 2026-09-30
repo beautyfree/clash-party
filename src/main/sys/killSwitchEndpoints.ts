@@ -14,13 +14,26 @@ interface ProxyAddress {
 
 export async function getKillSwitchEndpoints(config: IMihomoConfig): Promise<KillSwitchEndpoint[]> {
   const providers = (config as unknown as Record<string, unknown>)['proxy-providers']
-  if (providers && typeof providers === 'object' && Object.keys(providers).length > 0) {
-    throw new Error(
-      'Kill Switch requires inline proxies; proxy providers cannot be enumerated safely'
-    )
+  if (providers != null && (typeof providers !== 'object' || Array.isArray(providers))) {
+    throw new Error('Invalid proxy providers in the active profile')
   }
-  const proxies = config.proxies as unknown
-  if (!Array.isArray(proxies) || proxies.length === 0) {
+  const providerProxies: unknown[] = []
+  for (const provider of Object.values(providers ?? {})) {
+    if (!provider || typeof provider !== 'object' || Array.isArray(provider)) {
+      throw new Error('Invalid proxy provider in the active profile')
+    }
+    const { type, payload } = provider as Record<string, unknown>
+    if (type !== 'inline' || !Array.isArray(payload)) {
+      throw new Error('Kill Switch requires inline proxy providers with a payload')
+    }
+    providerProxies.push(...payload)
+  }
+  const inlineProxies = config.proxies as unknown
+  if (inlineProxies != null && !Array.isArray(inlineProxies)) {
+    throw new Error('Invalid proxies in the active profile')
+  }
+  const proxies = [...(inlineProxies ?? []), ...providerProxies]
+  if (proxies.length === 0) {
     throw new Error('No proxy server addresses found in the active profile')
   }
 

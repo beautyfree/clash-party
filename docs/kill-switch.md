@@ -4,7 +4,7 @@ Clash Party can keep a PF block active after the app or Mihomo exits. Enable TUN
 
 The anchor allows loopback, the configured `utun` interface, and root-owned connections to the active profile's proxy server IP addresses and ports. It blocks other outbound traffic, including LAN traffic. The helper refuses to install when `/etc/pf.conf` contains other custom filter rules; it does not remove rules owned by other software.
 
-The current implementation supports inline proxies with fixed server ports. It rejects proxy providers and other profiles whose server endpoints cannot be enumerated. Hostnames are resolved before enabling and refreshed while the tunnel works. If a server changes IP after the tunnel is already down, DNS cannot be used without an outside-tunnel exception: protection stays on and reconnection can require manual intervention. No such DNS exception is installed.
+The current implementation supports inline proxies and inline proxy providers with fixed server ports. It rejects file and remote proxy providers and other profiles whose server endpoints cannot be enumerated. Hostnames are resolved before enabling and refreshed while the tunnel works. If a server changes IP after the tunnel is already down, DNS cannot be used without an outside-tunnel exception: protection stays on and reconnection can require manual intervention. No such DNS exception is installed.
 
 The helper starts at boot, but PF cannot be guaranteed active before launchd starts it. A root process can also connect directly to the allowed proxy server addresses. Do not describe this mode as an absolute guarantee against every boot-time or root-level leak. A system VPN extension with OS-managed on-demand rules would be needed for a stronger boot boundary.
 
