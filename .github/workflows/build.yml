@@ -359,6 +359,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Setup Go for privileged helper
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
       - name: Setup Node.js
@@ -492,6 +496,8 @@ jobs:
           - x64
           - arm64
     runs-on: macos-latest
+    env:
+      MIHOMO_PARTY_LEGACY_MAC: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v6

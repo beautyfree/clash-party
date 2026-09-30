@@ -14,7 +14,7 @@ import { resourcesFilesDir } from '../utils/dirs'
 let triggerSysProxyTimer: NodeJS.Timeout | null = null
 let triggerSysProxyQueue: Promise<void> = Promise.resolve()
 let triggerSysProxySequence = 0
-const helperSocketPath = '/tmp/mihomo-party-helper.sock'
+export const helperSocketPath = '/tmp/mihomo-party-helper.sock'
 const helperPath = '/Library/PrivilegedHelperTools/party.mihomo.helper'
 const helperPlistPath = '/Library/LaunchDaemons/party.mihomo.helper.plist'
 const helperService = 'system/party.mihomo.helper'
@@ -252,7 +252,7 @@ async function requestSocketRecreation(): Promise<void> {
   }
 }
 
-async function helperRequest(requestFn: () => Promise<unknown>, maxRetries = 2): Promise<unknown> {
+export async function helperRequest<T>(requestFn: () => Promise<T>, maxRetries = 2): Promise<T> {
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

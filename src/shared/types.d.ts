@@ -284,6 +284,7 @@ interface ISmartModelStatus {
 
 interface IAppConfig {
   operationMode?: 'standard' | 'simple'
+  killSwitchEnabled?: boolean
   modeSelected?: boolean
   core: 'mihomo' | 'mihomo-alpha' | 'mihomo-smart' | 'mihomo-specific'
   specificVersion?: string

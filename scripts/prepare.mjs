@@ -3,7 +3,7 @@ import AdmZip from 'adm-zip'
 import path from 'path'
 import zlib from 'zlib'
 import { extract } from 'tar'
-import { execSync } from 'child_process'
+import { execFileSync, execSync } from 'child_process'
 
 const cwd = process.cwd()
 const TEMP_DIR = path.join(cwd, 'node_modules/.temp')
@@ -467,11 +467,41 @@ const resolveSubstore = () =>
     downloadURL:
       'https://github.com/sub-store-org/Sub-Store/releases/latest/download/sub-store.bundle.js'
   })
-const resolveHelper = () =>
-  resolveResource({
-    file: 'party.mihomo.helper',
-    downloadURL: `https://github.com/mihomo-party-org/mihomo-party-helper/releases/download/${arch}/party.mihomo.helper`
+// Pinned source is required until the coordinated helper change is released upstream.
+const HELPER_REVISION = '7ddae6cd6b1c2d12f6c95d2d4b52fef5dc5227a4'
+const resolveHelper = async () => {
+  if (process.env.MIHOMO_PARTY_LEGACY_MAC === '1') {
+    return resolveResource({
+      file: 'party.mihomo.helper',
+      downloadURL: `https://github.com/mihomo-party-org/mihomo-party-helper/releases/download/${arch}/party.mihomo.helper`
+    })
+  }
+  const helperDir = path.join(TEMP_DIR, `mihomo-party-helper-${HELPER_REVISION}`)
+  const archive = path.join(TEMP_DIR, `mihomo-party-helper-${HELPER_REVISION}.tar.gz`)
+  const targetDir = path.join(cwd, 'extra', 'files')
+  const targetPath = path.join(targetDir, 'party.mihomo.helper')
+  fs.rmSync(helperDir, { recursive: true, force: true })
+  fs.mkdirSync(helperDir, { recursive: true })
+  fs.mkdirSync(targetDir, { recursive: true })
+  if (!fs.existsSync(archive)) {
+    await downloadFile(
+      `https://github.com/beautyfree/mihomo-party-helper/archive/${HELPER_REVISION}.tar.gz`,
+      archive
+    )
+  }
+  await extract({ file: archive, cwd: helperDir, strip: 1 })
+  execFileSync('go', ['build', '-buildvcs=false', '-trimpath', '-o', targetPath, '.'], {
+    cwd: helperDir,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      GOOS: 'darwin',
+      GOARCH: arch === 'x64' ? 'amd64' : 'arm64',
+      CGO_ENABLED: '0'
+    }
   })
+  fs.chmodSync(targetPath, 0o755)
+}
 const resolveSubstoreFrontend = async () => {
   const tempDir = path.join(TEMP_DIR, 'substore-frontend')
   const tempZip = path.join(tempDir, 'dist.zip')

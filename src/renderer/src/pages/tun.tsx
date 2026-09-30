@@ -4,10 +4,16 @@ import { showErrorSync } from '@renderer/utils/error-display'
 import SettingCard from '@renderer/components/base/base-setting-card'
 import SettingItem from '@renderer/components/base/base-setting-item'
 import { useControledMihomoConfig } from '@renderer/hooks/use-controled-mihomo-config'
-import { grantTunPermissions, restartCore, setupFirewall } from '@renderer/utils/ipc'
+import {
+  getKillSwitchStatus,
+  grantTunPermissions,
+  restartCore,
+  setKillSwitch,
+  setupFirewall
+} from '@renderer/utils/ipc'
 import { platform } from '@renderer/utils/init'
 import { ipCIDRValidator } from '@renderer/utils/validate'
-import React, { Key, useState } from 'react'
+import React, { Key, useEffect, useState } from 'react'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import { MdDeleteForever } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +26,21 @@ const Tun: React.FC = () => {
   const { autoSetDNS = true } = appConfig || {}
   const { tun } = controledMihomoConfig || {}
   const [loading, setLoading] = useState(false)
+  const [killSwitchStatus, setKillSwitchStatus] = useState<{
+    enabled: boolean
+    healthy: boolean
+    error?: string
+  } | null>(null)
+  const [killSwitchError, setKillSwitchError] = useState('')
+  const [killSwitchBusy, setKillSwitchBusy] = useState(false)
+  useEffect(() => {
+    if (platform !== 'darwin') return
+    void getKillSwitchStatus()
+      .then(setKillSwitchStatus)
+      .catch((error) => {
+        setKillSwitchError(String(error))
+      })
+  }, [])
   const {
     device = getDefaultMihomoTunDevice(platform),
     stack = DEFAULT_MIHOMO_TUN_CONFIG.stack,
@@ -175,6 +196,59 @@ const Tun: React.FC = () => {
               >
                 {t('tun.core.auth')}
               </Button>
+            </SettingItem>
+          )}
+          {platform === 'darwin' && (
+            <SettingItem title={t('tun.killSwitch.title')} divider>
+              <div className="flex flex-col items-end gap-1">
+                <Switch
+                  size="sm"
+                  isSelected={killSwitchStatus?.enabled ?? false}
+                  isDisabled={!killSwitchStatus || killSwitchBusy}
+                  onValueChange={async (enabled) => {
+                    setKillSwitchBusy(true)
+                    try {
+                      setKillSwitchStatus(await setKillSwitch(enabled))
+                      setKillSwitchError('')
+                    } catch (error) {
+                      setKillSwitchError(String(error))
+                    } finally {
+                      try {
+                        setKillSwitchStatus(await getKillSwitchStatus())
+                      } catch (error) {
+                        setKillSwitchStatus(null)
+                        setKillSwitchError(String(error))
+                      }
+                      setKillSwitchBusy(false)
+                    }
+                  }}
+                />
+                {!killSwitchStatus && (
+                  <Button
+                    size="sm"
+                    isLoading={killSwitchBusy}
+                    onPress={async () => {
+                      setKillSwitchBusy(true)
+                      try {
+                        setKillSwitchStatus(await getKillSwitchStatus(true))
+                        setKillSwitchError('')
+                      } catch (error) {
+                        setKillSwitchError(String(error))
+                      } finally {
+                        setKillSwitchBusy(false)
+                      }
+                    }}
+                  >
+                    {t('tun.killSwitch.reconnect')}
+                  </Button>
+                )}
+                <span className="text-xs text-default-500">{t('tun.killSwitch.description')}</span>
+                {(killSwitchError || killSwitchStatus?.error) && (
+                  <span className="text-xs text-danger">
+                    {killSwitchError || killSwitchStatus?.error}
+                  </span>
+                )}
+              </div>
             </SettingItem>
           )}
           {platform === 'darwin' && (

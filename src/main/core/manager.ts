@@ -16,6 +16,7 @@ import {
   patchControledMihomoConfig,
   manageSmartOverride
 } from '../config'
+import { refreshKillSwitchIfEnabled } from '../sys/killSwitch'
 import {
   dataDir,
   coreLogPath,
@@ -108,6 +109,7 @@ let pendingRestart: Promise<void> | null = null
 let cancelActiveStartup: ((reason: Error) => void) | null = null
 let automaticRestartController: AbortController | null = null
 let resumeReloadTimer: NodeJS.Timeout | null = null
+let killSwitchRefreshTimer: NodeJS.Timeout | null = null
 
 // 文件监听器
 let coreWatcher: ChokidarWatcher | null = null
@@ -818,6 +820,18 @@ async function startCoreInternal(detached = false, skipStop = false): Promise<Co
     } catch (error) {
       managerLogger.warn('Failed to sync DNS override state after core start', error)
     }
+    if (process.platform === 'darwin' && !killSwitchRefreshTimer) {
+      killSwitchRefreshTimer = setInterval(
+        () => {
+          if (!hasCoreProcess() || isRestarting || coreOperationPhase === 'shutting-down') return
+          void refreshKillSwitchIfEnabled().catch((error) => {
+            managerLogger.warn('Failed to refresh Kill Switch proxy endpoints', error)
+          })
+        },
+        5 * 60 * 1000
+      )
+      killSwitchRefreshTimer.unref()
+    }
     return value
   })
   const activeCancel = cancelActiveStartup
@@ -936,6 +950,10 @@ export async function stopCore(force = false): Promise<void> {
 // Linux watchdog 也要留到确认退出之后再撤，否则最后一道兜底先于核心消失。
 export async function stopCoreForExit(): Promise<void> {
   coreOperationPhase = 'shutting-down'
+  if (killSwitchRefreshTimer) {
+    clearInterval(killSwitchRefreshTimer)
+    killSwitchRefreshTimer = null
+  }
   cancelAutomaticRestart()
   const stoppedChild = stopCoreProcessAndStreams(true, true)
   await Promise.allSettled([
@@ -968,6 +986,9 @@ async function ensureCoreProcessExited(proc: ChildProcess | null): Promise<void>
 }
 
 async function restartCoreOnce(forceStop: boolean): Promise<void> {
+  // Resolve and install new proxy endpoints while the old tunnel can still
+  // resolve hostnames. A failed refresh leaves the existing core running.
+  await refreshKillSwitchIfEnabled(true)
   const startAttempt = await runCoreOperation(async () => {
     await stopCoreInternal(forceStop)
     return startCoreInternal(false, true)

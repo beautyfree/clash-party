@@ -79,6 +79,7 @@ import {
   showErrorDialog
 } from '../core/manager'
 import { triggerSysProxy } from '../sys/sysproxy'
+import { getKillSwitchStatus, setKillSwitch } from '../sys/killSwitch'
 import { checkUpdate, downloadAndInstallUpdate } from '../resolve/autoUpdater'
 import {
   getFilePath,
@@ -352,6 +353,8 @@ const asyncHandlers: Record<string, AsyncFn> = {
   quitWithoutCore,
   // System
   triggerSysProxy,
+  getKillSwitchStatus,
+  setKillSwitch,
   checkTunPermissions,
   grantTunPermissions,
   manualGrantCorePermition,

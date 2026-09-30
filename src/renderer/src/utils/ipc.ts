@@ -170,6 +170,12 @@ interface IpcApi {
   quitWithoutCore: () => Promise<void>
   // System
   triggerSysProxy: (enable: boolean) => Promise<void>
+  getKillSwitchStatus: (
+    repair?: boolean
+  ) => Promise<{ enabled: boolean; healthy: boolean; error?: string }>
+  setKillSwitch: (
+    enabled: boolean
+  ) => Promise<{ enabled: boolean; healthy: boolean; error?: string }>
   checkTunPermissions: () => Promise<boolean>
   grantTunPermissions: () => Promise<void>
   manualGrantCorePermition: () => Promise<void>
@@ -368,6 +374,8 @@ export const {
   quitWithoutCore,
   // System
   triggerSysProxy,
+  getKillSwitchStatus,
+  setKillSwitch,
   checkTunPermissions,
   grantTunPermissions,
   manualGrantCorePermition,
